@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Your Cart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>Your Cart</h1>
+  </header>
+
+  <!-- Floating Cart Badge -->
+  <div id="cart-badge" onclick="window.location.href='cart.html'">
+    🛒 Cart (<span id="cart-count">0</span>)
+  </div>
+
+  <!-- Cart Container -->
+  <main>
+    <section style="background:#fff; padding:2rem; max-width:900px; margin:2rem auto; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.06);">
+      <table id="cartTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="total" id="grandTotal" style="text-align:right; font-size:1.2rem; font-weight:bold; margin-top:1rem;"></div>
+
+      <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem; flex-wrap:wrap;">
+        <button onclick="clearCart()">Clear Cart</button>
+        <button onclick="confirmOrder()">Confirm Order</button>
+        <a href="index.html" class="order-btn">Back to Menu</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      updateCartCount();
+      loadCart();
+    });
+
+    function loadCart() {
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const tbody = document.querySelector('#cartTable tbody');
+      const grandTotalEl = document.getElementById('grandTotal');
+      let grandTotal = 0;
+
+      if (cart.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Your cart is empty.</td></tr>`;
+        grandTotalEl.textContent = '';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      cart.forEach(({ itemName, qty, price }) => {
+        const unitPrice = parseFloat(price.replace(/[^\d.]/g, ''));
+        const total = unitPrice * qty;
+        grandTotal += total;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${itemName}</td>
+          <td>${qty}</td>
+          <td>${price}</td>
+          <td>₹${total.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      grandTotalEl.textContent = `Grand Total: ₹${grandTotal.toFixed(2)}`;
+    }
+
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const count = cart.reduce((sum, item) => sum + item.qty, 0);
+      document.getElementById('cart-count').textContent = count;
+    }
+
+    function clearCart() {
+      localStorage.removeItem('cart');
+      loadCart();
+      updateCartCount();
+    }
+
+   function confirmOrder() {
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  if (cart.length === 0) {
+    alert("Your cart is empty.");
+    return;
+  }
+
+  // Waiting time: 5 minutes per item
+  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+  const waitingTime = totalItems * 5;
+
+  alert(`✅ Order confirmed! Estimated waiting time: ${waitingTime} minutes.`);
+  localStorage.removeItem('cart');
+  updateCartCount();
+  window.location.href = 'index.html';
+}
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Summary - ASIET Canteen</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>Your Order Summary</h1>
+  </header>
+
+  <!-- Floating Cart Badge -->
+  <div id="cart-badge" onclick="window.location.href='cart.html'">
+    🛒 Cart (<span id="cart-count">0</span>)
+  </div>
+
+  <!-- Summary Container -->
+  <main>
+    <section style="background:#fff; padding:2rem; max-width:800px; margin:2rem auto; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.06);" id="receipt">
+      <h2 style="margin-bottom:1rem; color:#2e7d32;">ASIET Canteen Receipt</h2>
+      <p><strong>Date:</strong> <span id="print-date"></span></p>
+      <div id="order-summary"></div>
+    </section>
+
+    <!-- Buttons -->
+    <div style="text-align:center; margin-top:2rem;">
+      <a href="index.html" class="order-btn">Back to Menu</a>
+      <button onclick="printOrder()">Print Receipt</button>
+      <button style="background:#ff9800;" onclick="confirmOrder()">Confirm Order</button>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCartCount();
+      document.getElementById('print-date').textContent = new Date().toLocaleDateString();
+      loadSummary();
+    });
+
+    function loadSummary() {
+      const summarySection = document.getElementById('order-summary');
+      const orders = JSON.parse(localStorage.getItem('order') || '[]');
+
+      if (orders.length === 0) {
+        summarySection.innerHTML = '<p>No items ordered yet.</p>';
+        return;
+      }
+
+      let totalAmount = 0;
+      let html = '<ul style="list-style:none; padding:0;">';
+      orders.forEach(order => {
+        const itemTotal = parseInt(order.total.replace(/[^\d]/g, ''));
+        totalAmount += itemTotal;
+        html += `
+          <li style="background:#f9f9f9; padding:0.8rem; margin-bottom:0.5rem; border-radius:8px;">
+            <strong>${order.qty} x ${order.name}</strong><br>
+            Price: ${order.price} each<br>
+            Total: ${order.total}
+          </li>
+        `;
+      });
+      html += `</ul><p style="font-weight:bold; margin-top:1rem;">Grand Total: ₹${totalAmount}</p>`;
+      summarySection.innerHTML = html;
+    }
+
+    function printOrder() {
+      const printContents = document.getElementById('receipt').innerHTML;
+      const originalContents = document.body.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      location.reload();
+    }
+
+    function confirmOrder() {
+  const orders = JSON.parse(localStorage.getItem('order')) || [];
+  if (orders.length === 0) {
+    alert("No items in order.");
+    return;
+  }
+
+  const totalItems = orders.reduce((sum, item) => sum + item.qty, 0);
+  const waitingTime = totalItems * 5;
+
+  alert(`Your order has been confirmed! Estimated waiting time: ${waitingTime} minutes. Thank you.`);
+  localStorage.removeItem('order');
+  localStorage.removeItem('cart');
+  updateCartCount();
+  window.location.href = 'index.html';
+}
+
+
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const count = cart.reduce((sum, item) => sum + item.qty, 0);
+      document.getElementById('cart-count').textContent = count;
+    }
+  </script>
+</body>
+</html>

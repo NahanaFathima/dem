@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ASIET Canteen Menu</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* Combo Card Styles */
+.combo-card {
+  display: flex;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #1e1b2f, #000);
+  color: white;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.combo-text {
+  flex: 1 1 55%;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.combo-text h3 {
+  font-size: 1.8rem;
+  margin: 0;
+  color: #b36bff;
+}
+.combo-text p { margin: 0.4rem 0; }
+.combo-text .price {
+  color: #ffdd57;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+.combo-buttons {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.combo-buttons button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s ease;
+}
+.combo-buttons button:nth-child(1) { background: #673ab7; color: white; }
+.combo-buttons button:nth-child(2) { background: #4caf50; color: white; }
+.combo-buttons button:nth-child(3) { background: #ff9800; color: white; }
+.combo-buttons button:hover { opacity: 0.85; }
+.combo-image {
+  flex: 1 1 40%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+}
+.combo-image img {
+  max-width: 180px;
+  border-radius: 8px;
+}
+/* Search Bar */
+#search-box {
+  padding: 0.5rem;
+  width: 60%;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Welcome to ASIET Canteen</h1>
+  <div id="date"></div>
+</header>
+
+<div id="cart-badge" onclick="goToCart()">🛒 Cart (<span id="cart-count">0</span>)</div>
+
+<section id="combo-section"></section>
+
+<!-- Search Bar -->
+<div style="text-align:center; margin:1rem;">
+  <input type="text" id="search-box" placeholder="🔍 Search menu...">
+</div>
+
+<div class="veg-menu-heading-container">
+  <h2 class="menu-heading">Vegetarian Menu</h2>
+</div>
+
+<main>
+<section id="veg-menu"></section>
+<section id="current-order">
+  <h2>Your Current Order</h2>
+  <div id="order-details"></div>
+  <div style="margin-top:1rem; display:flex; gap:1rem; flex-wrap:wrap;">
+    <button onclick="clearOrder()" class="order-btn">Clear Order</button>
+    <button onclick="goToCart()" class="order-btn">Go to Cart</button>
+    <a href="summary.html" class="order-btn">View Full Summary</a>
+  </div>
+</section>
+</main>
+
+<script>
+let allMenuItems = [];
+let comboData = null;
+
+fetch('menu.json')
+  .then(res => res.json())
+  .then(data => {
+    const today = new Date();
+    document.getElementById('date').textContent = 
+      `Menu for ${today.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}`;
+
+    allMenuItems = data.veg;
+    comboData = {
+      name: "Veggie Delight Combo",
+      items: [data.veg[0], data.veg[1], data.veg[2]],
+      description: "A perfect mix of our 3 bestsellers",
+      price: "₹" + (
+        parseInt(data.veg[0].price.replace(/[^\d]/g,'')) +
+        parseInt(data.veg[1].price.replace(/[^\d]/g,'')) +
+        parseInt(data.veg[2].price.replace(/[^\d]/g,''))
+      ),
+      photo: data.veg[0].photo
+    };
+
+    renderCombo(comboData);
+    renderMenu(allMenuItems);
+    showComboModal(comboData);
+    updateCartCount();
+    showOrderDetails();
+  });
+
+function renderCombo(combo) {
+  document.getElementById('combo-section').innerHTML = `
+    <h2 style="text-align:center;margin-bottom:1rem;color:#b36bff;">🌟 Combo Specials 🌟</h2>
+    <div class="combo-card" id="combo-card">
+      <div class="combo-text">
+        <h3>${combo.name}</h3>
+        <p>${combo.description}</p>
+        <p class="price">${combo.price}</p>
+        <div class="combo-buttons">
+          <button onclick="showDetails('${combo.name}', '${combo.price}', '', '${combo.items.map(i=>i.item).join(', ')}')">View Details</button>
+          <button onclick="placeOrder('${combo.name}', 1, '${combo.price}')">Order Now</button>
+          <button onclick="addToCart('${combo.name}', 1, '${combo.price}')">Add to Cart</button>
+        </div>
+      </div>
+      <div class="combo-image"><img src="${combo.photo}" alt="Combo"></div>
+    </div>`;
+}
+
+function renderMenu(menuList) {
+  const vegMenu = document.getElementById('veg-menu');
+  vegMenu.innerHTML = '';
+  menuList.forEach((item, idx) => {
+    vegMenu.insertAdjacentHTML('beforeend', `
+      <div class="card">
+        <img src="${item.photo}" alt="${item.item}" loading="lazy">
+        <div class="card-details">
+          <h3>${item.item}</h3>
+          <p class="price">${item.price}</p>
+          <p class="calories">${item.calories}</p>
+          <div style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button onclick="showDetails('${item.item}', '${item.price}', '${item.calories}', '${item.ingredients}')">View Details</button>
+            <button onclick="placeOrder('${item.item}', document.getElementById('qty${idx}').value, '${item.price}')">Place Order</button>
+            <button onclick="addToCart('${item.item}', document.getElementById('qty${idx}').value, '${item.price}')">Add to Cart</button>
+          </div>
+          <label style="margin-top:0.5rem; display:block;">
+            Qty: <input type="number" min="0" max="10" value="0" id="qty${idx}" style="width:60px; padding:0.3rem; border-radius:5px; border:1px solid #ccc;">
+          </label>
+        </div>
+      </div>
+    `);
+  });
+}
+
+// Search filter for combo + menu
+document.getElementById('search-box').addEventListener('input', function () {
+  const term = this.value.toLowerCase();
+  const filteredMenu = allMenuItems.filter(item =>
+    item.item.toLowerCase().includes(term) ||
+    item.ingredients.toLowerCase().includes(term)
+  );
+  renderMenu(filteredMenu);
+
+  const comboMatch = comboData.name.toLowerCase().includes(term) || 
+                     comboData.items.some(i => i.item.toLowerCase().includes(term));
+  document.getElementById('combo-card').style.display = comboMatch || term === '' ? 'flex' : 'none';
+});
+
+// Cart and order functions
+function addToCart(itemName, qty, price) {
+  qty = parseInt(qty);
+  if (isNaN(qty) || qty < 1) { alert('Enter a valid quantity.'); return; }
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  const existing = cart.find(i => i.itemName === itemName);
+  if (existing) { existing.qty += qty; } 
+  else { cart.push({ itemName, qty, price }); }
+  localStorage.setItem('cart', JSON.stringify(cart));
+  updateCartCount();
+}
+
+function updateCartCount() {
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  document.getElementById('cart-count').textContent = cart.reduce((sum, i) => sum + i.qty, 0);
+}
+
+function goToCart() { window.location.href = 'cart.html'; }
+
+function placeOrder(item, qty, price) {
+  qty = parseInt(qty);
+  if (isNaN(qty) || qty < 1 || qty > 10) { alert('Invalid quantity (1–10).'); return; }
+  const numericPrice = parseInt(price.replace(/[^\d]/g, ''));
+  const total = numericPrice * qty;
+  const orders = JSON.parse(localStorage.getItem('order') || '[]');
+  orders.push({ name: item, qty, price: `₹${numericPrice}`, total: `₹${total}` });
+  localStorage.setItem('order', JSON.stringify(orders));
+  showOrderDetails();
+}
+
+function showOrderDetails() {
+  const orders = JSON.parse(localStorage.getItem('order') || '[]');
+  const orderDetails = document.getElementById('order-details');
+  if (!orders.length) { orderDetails.innerHTML = '<p>No items ordered yet.</p>'; return; }
+  let totalAmount = 0;
+  let html = '<ul style="list-style:none; padding:0;">';
+  orders.forEach((o, idx) => {
+    const itemTotal = parseInt(o.total.replace(/[^\d]/g, ''));
+    totalAmount += itemTotal;
+    html += `<li style="background:#f9f9f9; padding:0.8rem; margin-bottom:0.5rem; border-radius:8px;">
+      <strong>${o.qty} x ${o.name}</strong><br>
+      Price: ${o.price} each<br>
+      Total: ${o.total}<br>
+      <button style="background:#ff9800;" onclick="editOrder(${idx})">Edit</button>
+      <button style="background:#f44336;" onclick="removeOrder(${idx})">Remove</button>
+    </li>`;
+  });
+  html += `</ul><p style="font-weight:bold;">Grand Total: ₹${totalAmount}</p>`;
+  orderDetails.innerHTML = html;
+}
+
+function clearOrder() { localStorage.removeItem('order'); showOrderDetails(); }
+function removeOrder(i) { const o = JSON.parse(localStorage.getItem('order')||'[]'); o.splice(i,1); localStorage.setItem('order', JSON.stringify(o)); showOrderDetails(); }
+function editOrder(i) {
+  const o = JSON.parse(localStorage.getItem('order')||'[]');
+  const newQty = parseInt(prompt(`Edit quantity for ${o[i].name}:`, o[i].qty));
+  if (isNaN(newQty) || newQty < 1 || newQty > 10) return alert('Invalid qty.');
+  const price = parseInt(o[i].price.replace(/[^\d]/g, ''));
+  o[i].qty = newQty; o[i].total = `₹${price * newQty}`;
+  localStorage.setItem('order', JSON.stringify(o));
+  showOrderDetails();
+}
+
+function showDetails(name, price, calories, ingredients) {
+  document.getElementById('details-name').textContent = name;
+  document.getElementById('details-price').textContent = `Price: ${price}`;
+  document.getElementById('details-calories').textContent = calories ? `Calories: ${calories}` : '';
+  document.getElementById('details-ingredients').textContent = ingredients;
+  document.getElementById('details-modal').style.display = 'flex';
+}
+function closeDetails() { document.getElementById('details-modal').style.display = 'none'; }
+
+// Combo Popup
+function showComboModal(combo) {
+  const modal = document.createElement('div');
+  modal.id = "combo-modal";
+  modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;";
+  modal.innerHTML = `
+    <div style="background:white;padding:1.5rem;border-radius:12px;max-width:400px;width:90%;position:relative;">
+      <span onclick="document.getElementById('combo-modal').remove()" style="position:absolute;top:10px;right:15px;cursor:pointer;font-size:1.2rem;">✖</span>
+      <h2>${combo.name}</h2>
+      <p>${combo.description}</p>
+      <p><strong>${combo.price}</strong></p>
+      <button style="background:#4caf50;color:white;padding:0.5rem 1rem;border:none;border-radius:6px;cursor:pointer;" onclick="placeOrder('${combo.name}',1,'${combo.price}');document.getElementById('combo-modal').remove()">Order Now</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+</script>
+
+<!-- Details Modal -->
+<div id="details-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:1.5rem; border-radius:12px; max-width:400px; width:90%; position:relative;">
+    <span onclick="closeDetails()" style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:1.2rem;">✖</span>
+    <h2 id="details-name" style="margin-bottom:0.5rem;"></h2>
+    <p id="details-price"></p>
+    <p id="details-calories"></p>
+    <p><strong>Ingredients:</strong></p>
+    <p id="details-ingredients"></p>
+  </div>
+</div>
+</body>
+</html>
